@@ -1,9 +1,10 @@
 """Заполнение базы данных данными из hh.ru API."""
 
+import time
+from typing import Any, Dict, List
+
 from src.api.hh_api import HHAPI
 from src.db.db_saver import DBSaver
-from typing import Dict, Any, List
-import time
 
 
 class DBFiller:
@@ -21,75 +22,80 @@ class DBFiller:
         Returns:
             Dict[str, Any]: Статистика по заполнению
         """
-        stats = {
-            'total_companies': 0,
-            'success_companies': 0,
-            'total_vacancies': 0,
-            'saved_vacancies': 0,
-            'errors': 0,
-            'companies': []
+        stats: Dict[str, Any] = {
+            "total_companies": 0,
+            "success_companies": 0,
+            "total_vacancies": 0,
+            "saved_vacancies": 0,
+            "errors": 0,
+            "companies": [],
         }
 
-        # Подключаемся к БД
-        self.saver.connect()
+        try:
+            # Подключаемся к БД
+            self.saver.connect()
 
-        # Получаем данные о компаниях
-        companies_data = self.api.get_all_companies_data()
-        stats['total_companies'] = len(companies_data)
+            # Получаем данные о компаниях
+            companies_data = self.api.get_all_companies_data()
+            stats["total_companies"] = len(companies_data)
 
-        print("\n" + "=" * 60)
-        print("ЗАПОЛНЕНИЕ БАЗЫ ДАННЫХ")
-        print("=" * 60)
+            print("\n" + "=" * 60)
+            print("ЗАПОЛНЕНИЕ БАЗЫ ДАННЫХ")
+            print("=" * 60)
 
-        for company_data in companies_data:
-            print(f"\n📊 Обработка компании: {company_data['name']}")
+            for company_data in companies_data:
+                print(f"\n📊 Обработка компании: {company_data['name']}")
 
-            # Сохраняем компанию
-            company_id = self.saver.save_company(company_data)
-            if company_id:
-                stats['success_companies'] += 1
-                company_stats = {
-                    'name': company_data['name'],
-                    'company_id': company_id,
-                    'vacancies_found': 0,
-                    'vacancies_saved': 0
-                }
+                try:
+                    # Сохраняем компанию
+                    company_id = self.saver.save_company(company_data)
+                    if company_id:
+                        stats["success_companies"] += 1
+                        company_stats = {
+                            "name": company_data["name"],
+                            "company_id": company_id,
+                            "vacancies_found": 0,
+                            "vacancies_saved": 0,
+                        }
 
-                # Получаем вакансии компании
-                print(f"  Загрузка вакансий...")
-                vacancies = self.api.get_all_vacancies_for_company(
-                    company_data['hh_id']
-                )
-                company_stats['vacancies_found'] = len(vacancies)
-                stats['total_vacancies'] += len(vacancies)
+                        # Получаем вакансии компании
+                        print("  Загрузка вакансий...")
+                        vacancies = self.api.get_all_vacancies_for_company(company_data["hh_id"])
+                        company_stats["vacancies_found"] = len(vacancies)
+                        stats["total_vacancies"] += len(vacancies)
 
-                if vacancies:
-                    # Сохраняем вакансии
-                    saved, errors = self.saver.save_vacancies(
-                        vacancies,
-                        company_id
-                    )
-                    company_stats['vacancies_saved'] = saved
-                    stats['saved_vacancies'] += saved
-                    stats['errors'] += errors
+                        if vacancies:
+                            # Сохраняем вакансии
+                            saved, errors = self.saver.save_vacancies(vacancies, company_id)
+                            company_stats["vacancies_saved"] = saved
+                            stats["saved_vacancies"] += saved
+                            stats["errors"] += errors
 
-                    print(f"  ✅ Вакансий найдено: {len(vacancies)}")
-                    print(f"  ✅ Сохранено: {saved}")
-                    if errors:
-                        print(f"  ⚠️ Ошибок: {errors}")
-                else:
-                    print(f"  ⚠️ Вакансий не найдено")
+                            print("  ✅ Вакансий найдено:", len(vacancies))
+                            print("  ✅ Сохранено:", saved)
+                            if errors:
+                                print(f"  ⚠️ Ошибок: {errors}")
+                        else:
+                            print("  ⚠️ Вакансий не найдено")
 
-                stats['companies'].append(company_stats)
-            else:
-                stats['errors'] += 1
-                print(f"  ❌ Ошибка при сохранении компании")
+                        stats["companies"].append(company_stats)
+                    else:
+                        stats["errors"] += 1
+                        print("  ❌ Ошибка при сохранении компании")
 
-            # Небольшая задержка между компаниями
-            time.sleep(0.5)
+                except Exception as e:
+                    stats["errors"] += 1
+                    print(f"  ❌ Ошибка при обработке компании {company_data['name']}: {e}")
 
-        # Закрываем соединение с БД
-        self.saver.close()
+                # Небольшая задержка между компаниями
+                time.sleep(0.5)
+
+        except Exception as e:
+            print(f"❌ Критическая ошибка: {e}")
+            stats["errors"] += 1
+        finally:
+            # Закрываем соединение с БД
+            self.saver.close()
 
         return stats
 
@@ -103,25 +109,18 @@ class DBFiller:
         print("\n" + "=" * 60)
         print("СТАТИСТИКА ЗАПОЛНЕНИЯ БД")
         print("=" * 60)
-        print(f"\n📊 Компании:")
+        print("\n📊 Компании:")
         print(f"  Всего: {stats['total_companies']}")
         print(f"  Сохранено: {stats['success_companies']}")
-        print(f"\n📊 Вакансии:")
+        print("\n📊 Вакансии:")
         print(f"  Всего найдено: {stats['total_vacancies']}")
         print(f"  Сохранено в БД: {stats['saved_vacancies']}")
-        print(f"\n📊 Ошибки:")
+        print("\n📊 Ошибки:")
         print(f"  Всего: {stats['errors']}")
 
-        if stats['companies']:
+        if stats["companies"]:
             print("\n📊 По компаниям:")
-            for company in stats['companies']:
+            for company in stats["companies"]:
                 print(f"  {company['name']}:")
                 print(f"    Вакансий найдено: {company['vacancies_found']}")
                 print(f"    Сохранено: {company['vacancies_saved']}")
-
-
-if __name__ == "__main__":
-    # Заполняем БД
-    filler = DBFiller()
-    stats = filler.fill_companies_and_vacancies()
-    filler.print_stats(stats)
