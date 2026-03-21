@@ -102,6 +102,7 @@ python main.py
 
 
 ```
+```markdown
 
 📁 Структура проекта
 
