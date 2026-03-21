@@ -67,7 +67,9 @@ def main():
         elif choice == "5":
             keyword = input("\n🔍 Введите ключевое слово для поиска: ")
             vacancies = db.get_vacancies_with_keyword(keyword)
-            print_vacancies(vacancies, f"ВАКАНСИИ ПО КЛЮЧЕВОМУ СЛОВУ '{keyword}' ({len(vacancies)} шт.)")
+            print_vacancies(
+                vacancies, f"ВАКАНСИИ ПО КЛЮЧЕВОМУ СЛОВУ '{keyword}' ({len(vacancies)} шт.)"
+            )
 
         elif choice == "6":
             stats = db.get_statistics()
