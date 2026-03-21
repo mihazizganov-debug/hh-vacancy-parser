@@ -1,10 +1,11 @@
 """Создание базы данных и таблиц для проекта."""
 
-import psycopg2
-from psycopg2 import sql
-from typing import Optional
 import os
+from typing import Optional
+
+import psycopg2
 from dotenv import load_dotenv
+from psycopg2 import sql
 
 load_dotenv()
 
@@ -14,11 +15,11 @@ class DBCreator:
 
     def __init__(self) -> None:
         """Инициализация с параметрами подключения из .env."""
-        self.host = os.getenv('DB_HOST', 'localhost')
-        self.port = os.getenv('DB_PORT', '5432')
-        self.dbname = os.getenv('DB_NAME', 'hh_vacancy_parser')
-        self.user = os.getenv('DB_USER', 'postgres')
-        self.password = os.getenv('DB_PASSWORD', '')
+        self.host = os.getenv("DB_HOST", "localhost")
+        self.port = os.getenv("DB_PORT", "5432")
+        self.dbname = os.getenv("DB_NAME", "hh_vacancy_parser")
+        self.user = os.getenv("DB_USER", "postgres")
+        self.password = os.getenv("DB_PASSWORD", "")
 
     def create_database(self) -> None:
         """Создание базы данных, если она не существует."""
@@ -27,9 +28,9 @@ class DBCreator:
             conn = psycopg2.connect(
                 host=self.host,
                 port=self.port,
-                dbname='postgres',
+                dbname="postgres",
                 user=self.user,
-                password=self.password
+                password=self.password,
             )
             conn.autocommit = True
             cur = conn.cursor()
@@ -39,9 +40,8 @@ class DBCreator:
             exists = cur.fetchone()
 
             if not exists:
-                cur.execute(sql.SQL("CREATE DATABASE {}").format(
-                    sql.Identifier(self.dbname)
-                ))
+                # Используем sql.Identifier для безопасного экранирования имени
+                cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(self.dbname)))
                 print(f"✅ База данных '{self.dbname}' создана")
             else:
                 print(f"ℹ️ База данных '{self.dbname}' уже существует")
@@ -60,7 +60,7 @@ class DBCreator:
                 port=self.port,
                 dbname=self.dbname,
                 user=self.user,
-                password=self.password
+                password=self.password,
             )
             cur = conn.cursor()
 
@@ -97,7 +97,7 @@ class DBCreator:
 
             # Создание индекса для быстрого поиска по компаниям
             cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_vacancies_company 
+                CREATE INDEX IF NOT EXISTS idx_vacancies_company
                 ON vacancies(company_id)
             """)
             print("✅ Индексы созданы")
@@ -108,10 +108,11 @@ class DBCreator:
 
         except Exception as e:
             print(f"❌ Ошибка при создании таблиц: {e}")
-
-
-if __name__ == "__main__":
-    # Тестирование создания БД и таблиц
-    creator = DBCreator()
-    creator.create_database()
-    creator.create_tables()
+            # Пробуем сделать rollback, если соединение ещё открыто
+            try:
+                if conn:
+                    conn.rollback()
+                    cur.close()
+                    conn.close()
+            except Exception:
+                pass
