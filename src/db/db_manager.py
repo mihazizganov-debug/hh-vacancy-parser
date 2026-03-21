@@ -1,10 +1,11 @@
 """Класс для работы с данными в базе данных."""
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from typing import List, Dict, Any, Optional
 import os
+from typing import Any, Dict, List, Optional
+
+import psycopg2
 from dotenv import load_dotenv
+from psycopg2.extras import RealDictCursor
 
 load_dotenv()
 
@@ -12,13 +13,17 @@ load_dotenv()
 class DBManager:
     """Класс для получения данных из БД."""
 
+    def some_method(self):
+        if self.cur is None:
+            raise Exception("Нет подключения к БД")
+
     def __init__(self) -> None:
         """Инициализация подключения к БД."""
-        self.host = os.getenv('DB_HOST', 'localhost')
-        self.port = os.getenv('DB_PORT', '5432')
-        self.dbname = os.getenv('DB_NAME', 'hh_vacancy_parser')
-        self.user = os.getenv('DB_USER', 'postgres')
-        self.password = os.getenv('DB_PASSWORD', '')
+        self.host = os.getenv("DB_HOST", "localhost")
+        self.port = os.getenv("DB_PORT", "5432")
+        self.dbname = os.getenv("DB_NAME", "hh_vacancy_parser")
+        self.user = os.getenv("DB_USER", "postgres")
+        self.password = os.getenv("DB_PASSWORD", "")
         self.conn = None
         self.cur = None
 
@@ -29,10 +34,10 @@ class DBManager:
             port=self.port,
             dbname=self.dbname,
             user=self.user,
-            password=self.password
-        )
+            password=self.password,
+        )  # type: ignore[assignment]
         # Используем RealDictCursor, чтобы результаты были в виде словарей
-        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
+        self.cur = self.conn.cursor(cursor_factory=RealDictCursor)  # type: ignore[union-attr]
 
     def close(self) -> None:
         """Закрытие соединения с БД."""
@@ -49,7 +54,7 @@ class DBManager:
             List[Dict[str, Any]]: Список компаний с количеством вакансий
         """
         query = """
-            SELECT 
+            SELECT
                 c.name AS company_name,
                 COUNT(v.vacancy_id) AS vacancies_count
             FROM companies c
@@ -69,7 +74,7 @@ class DBManager:
             List[Dict[str, Any]]: Список вакансий
         """
         query = """
-            SELECT 
+            SELECT
                 c.name AS company_name,
                 v.name AS vacancy_name,
                 v.salary_from,
@@ -104,7 +109,7 @@ class DBManager:
         """
         self.cur.execute(query)
         result = self.cur.fetchone()
-        return round(result['avg_salary'], 2) if result['avg_salary'] else 0
+        return round(result["avg_salary"], 2) if result["avg_salary"] else 0
 
     def get_vacancies_with_higher_salary(self) -> List[Dict[str, Any]]:
         """
@@ -117,7 +122,7 @@ class DBManager:
         avg_salary = self.get_avg_salary()
 
         query = """
-            SELECT 
+            SELECT
                 c.name AS company_name,
                 v.name AS vacancy_name,
                 COALESCE(
@@ -131,7 +136,7 @@ class DBManager:
                 v.url
             FROM vacancies v
             JOIN companies c ON v.company_id = c.company_id
-            WHERE 
+            WHERE
                 (v.salary_from IS NOT NULL OR v.salary_to IS NOT NULL)
                 AND COALESCE(
                     (v.salary_from + v.salary_to) / 2.0,
@@ -155,7 +160,7 @@ class DBManager:
             List[Dict[str, Any]]: Список вакансий
         """
         query = """
-            SELECT 
+            SELECT
                 c.name AS company_name,
                 v.name AS vacancy_name,
                 v.salary_from,
@@ -167,7 +172,7 @@ class DBManager:
             WHERE v.name ILIKE %s
             ORDER BY c.name, v.name
         """
-        self.cur.execute(query, (f'%{keyword}%',))
+        self.cur.execute(query, (f"%{keyword}%",))
         return self.cur.fetchall()
 
     def get_vacancies_by_company(self, company_name: str) -> List[Dict[str, Any]]:
@@ -181,7 +186,7 @@ class DBManager:
             List[Dict[str, Any]]: Список вакансий компании
         """
         query = """
-            SELECT 
+            SELECT
                 v.name AS vacancy_name,
                 v.salary_from,
                 v.salary_to,
@@ -192,7 +197,7 @@ class DBManager:
             WHERE c.name ILIKE %s
             ORDER BY v.name
         """
-        self.cur.execute(query, (f'%{company_name}%',))
+        self.cur.execute(query, (f"%{company_name}%",))
         return self.cur.fetchall()
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -206,25 +211,27 @@ class DBManager:
 
         # Количество компаний
         self.cur.execute("SELECT COUNT(*) FROM companies")
-        stats['companies_count'] = self.cur.fetchone()['count']
+        stats["companies_count"] = self.cur.fetchone()["count"]
 
         # Количество вакансий
         self.cur.execute("SELECT COUNT(*) FROM vacancies")
-        stats['vacancies_count'] = self.cur.fetchone()['count']
+        stats["vacancies_count"] = self.cur.fetchone()["count"]
 
         # Средняя зарплата
-        stats['avg_salary'] = self.get_avg_salary()
+        stats["avg_salary"] = self.get_avg_salary()
 
         # Вакансии с зарплатой
         self.cur.execute("""
-            SELECT 
+            SELECT
                 COUNT(*) as with_salary,
                 COUNT(*) FILTER (WHERE salary_from IS NULL AND salary_to IS NULL) as without_salary
             FROM vacancies
         """)
         salary_stats = self.cur.fetchone()
-        stats['vacancies_with_salary'] = salary_stats['with_salary'] - salary_stats['without_salary']
-        stats['vacancies_without_salary'] = salary_stats['without_salary']
+        stats["vacancies_with_salary"] = (
+            salary_stats["with_salary"] - salary_stats["without_salary"]
+        )
+        stats["vacancies_without_salary"] = salary_stats["without_salary"]
 
         return stats
 
@@ -243,18 +250,18 @@ def print_vacancies(vacancies: List[Dict[str, Any]], title: str = "") -> None:
         print(f"\n  {i}. {v.get('company_name', '')} — {v['vacancy_name']}")
 
         salary_parts = []
-        if v.get('salary_from'):
+        if v.get("salary_from"):
             salary_parts.append(f"от {v['salary_from']}")
-        if v.get('salary_to'):
+        if v.get("salary_to"):
             salary_parts.append(f"до {v['salary_to']}")
 
         if salary_parts:
             salary_str = " ".join(salary_parts)
-            if v.get('currency'):
+            if v.get("currency"):
                 salary_str += f" {v['currency']}"
             print(f"     Зарплата: {salary_str}")
 
-        if v.get('url'):
+        if v.get("url"):
             print(f"     Ссылка: {v['url']}")
 
 
