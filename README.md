@@ -42,31 +42,32 @@ cd hh-vacancy-parser
 ### 2. Установить Poetry и зависимости
 
 # Установка poetry (если не установлен)
-```bash
+```
 pip install poetry
 ```
 
 # Установка зависимостей
-```bash
+```
 poetry install
 ```
 
 # Активация окружения
-```bash
+```
 poetry shell
 ```
 
 ### 3. Настроить подключение к PostgreSQL
-
 Создайте файл .env в корне проекта:
+```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=hh_vacancy_parser
 DB_USER=postgres
 DB_PASSWORD=ваш_пароль
+```
 
 ### 4. Запустить программу
-```bash
+```
 python main.py
 ```
 При первом запуске программа автоматически:
@@ -99,6 +100,8 @@ HH VACANCY PARSER - МЕНЮ
 0. Выход
 ------------------------------------------------------------
 Ваш выбор (0-7):
+
+```markdown
 
 📁 Структура проекта
 
