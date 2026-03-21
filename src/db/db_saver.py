@@ -1,10 +1,11 @@
 """Сохранение данных в базу данных."""
 
-import psycopg2
-from psycopg2 import sql
-from typing import List, Dict, Any, Optional
 import os
+from typing import Any, Dict, List, Optional
+
+import psycopg2
 from dotenv import load_dotenv
+from psycopg2 import sql
 
 load_dotenv()
 
@@ -12,15 +13,19 @@ load_dotenv()
 class DBSaver:
     """Класс для сохранения данных о компаниях и вакансиях в БД."""
 
+    def some_method(self):
+        if self.cur is None:
+            raise Exception("Нет подключения к БД")
+
     def __init__(self) -> None:
         """Инициализация подключения к БД."""
-        self.host = os.getenv('DB_HOST', 'localhost')
-        self.port = os.getenv('DB_PORT', '5432')
-        self.dbname = os.getenv('DB_NAME', 'hh_vacancy_parser')
-        self.user = os.getenv('DB_USER', 'postgres')
-        self.password = os.getenv('DB_PASSWORD', '')
-        self.conn = None
-        self.cur = None
+        self.host = os.getenv("DB_HOST", "localhost")
+        self.port = os.getenv("DB_PORT", "5432")
+        self.dbname = os.getenv("DB_NAME", "hh_vacancy_parser")
+        self.user = os.getenv("DB_USER", "postgres")
+        self.password = os.getenv("DB_PASSWORD", "")
+        self.conn = None  # type: ignore[assignment]
+        self.cur = None  # type: ignore[assignment]
 
     def connect(self) -> None:
         """Подключение к базе данных."""
@@ -29,9 +34,9 @@ class DBSaver:
             port=self.port,
             dbname=self.dbname,
             user=self.user,
-            password=self.password
-        )
-        self.cur = self.conn.cursor()
+            password=self.password,
+        )  # type: ignore[assignment]
+        self.cur = self.conn.cursor()  # type: ignore[union-attr]
 
     def close(self) -> None:
         """Закрытие соединения с БД."""
@@ -51,7 +56,8 @@ class DBSaver:
             Optional[int]: ID компании в БД или None
         """
         try:
-            self.cur.execute("""
+            self.cur.execute(
+                """
                 INSERT INTO companies (hh_id, name, description, site_url, open_vacancies)
                 VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (hh_id) DO UPDATE SET
@@ -60,13 +66,15 @@ class DBSaver:
                     site_url = EXCLUDED.site_url,
                     open_vacancies = EXCLUDED.open_vacancies
                 RETURNING company_id
-            """, (
-                company_data['hh_id'],
-                company_data['name'],
-                company_data.get('description'),
-                company_data.get('site_url'),
-                company_data.get('open_vacancies', 0)
-            ))
+            """,
+                (
+                    company_data["hh_id"],
+                    company_data["name"],
+                    company_data.get("description"),
+                    company_data.get("site_url"),
+                    company_data.get("open_vacancies", 0),
+                ),
+            )
             self.conn.commit()
             result = self.cur.fetchone()
             return result[0] if result else None
@@ -87,29 +95,32 @@ class DBSaver:
             bool: Успешно ли сохранено
         """
         try:
-            salary = vacancy_data.get('salary', {})
-            salary_from = salary.get('from') if salary else None
-            salary_to = salary.get('to') if salary else None
-            currency = salary.get('currency') if salary else None
+            salary = vacancy_data.get("salary", {})
+            salary_from = salary.get("from") if salary else None
+            salary_to = salary.get("to") if salary else None
+            currency = salary.get("currency") if salary else None
 
-            self.cur.execute("""
+            self.cur.execute(
+                """
                 INSERT INTO vacancies (
-                    hh_id, company_id, name, salary_from, salary_to, 
+                    hh_id, company_id, name, salary_from, salary_to,
                     currency, url, description, published_at
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (hh_id) DO NOTHING
-            """, (
-                vacancy_data['id'],
-                company_id,
-                vacancy_data['name'],
-                salary_from,
-                salary_to,
-                currency,
-                vacancy_data['alternate_url'],
-                vacancy_data.get('description'),
-                vacancy_data.get('published_at')
-            ))
+            """,
+                (
+                    vacancy_data["id"],
+                    company_id,
+                    vacancy_data["name"],
+                    salary_from,
+                    salary_to,
+                    currency,
+                    vacancy_data["alternate_url"],
+                    vacancy_data.get("description"),
+                    vacancy_data.get("published_at"),
+                ),
+            )
             self.conn.commit()
             return True
         except Exception as e:
@@ -148,11 +159,11 @@ if __name__ == "__main__":
 
     # Тестовые данные
     test_company = {
-        'hh_id': 123456,
-        'name': 'Тестовая компания',
-        'description': 'Описание',
-        'site_url': 'https://test.ru',
-        'open_vacancies': 5
+        "hh_id": 123456,
+        "name": "Тестовая компания",
+        "description": "Описание",
+        "site_url": "https://test.ru",
+        "open_vacancies": 5,
     }
 
     company_id = saver.save_company(test_company)
