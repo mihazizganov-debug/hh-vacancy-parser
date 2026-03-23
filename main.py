@@ -4,6 +4,8 @@
 """Главный модуль программы. Точка входа."""
 
 from src.db.db_manager import DBManager, print_vacancies
+from src.db.db_creator import DBCreator
+from src.db.fill_db import DBFiller
 
 
 def print_menu() -> None:
@@ -24,11 +26,35 @@ def print_menu() -> None:
 
 def main():
     """Главная функция."""
+
+    # ========== БЛОК ИНИЦИАЛИЗАЦИИ БАЗЫ ДАННЫХ ==========
+    print("=" * 60)
+    print("ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ")
+    print("=" * 60)
+
+    # 1. Создание базы данных
+    print("\n📁 Создание базы данных...")
+    db_creator = DBCreator()
+    db_creator.create_database()
+
+    # 2. Создание таблиц
+    print("\n📋 Создание таблиц...")
+    db_creator.create_tables()
+
+    # 3. Заполнение данными
+    print("\n📊 Заполнение данными из hh.ru...")
+    filler = DBFiller()
+    stats = filler.fill_companies_and_vacancies()
+    filler.print_stats(stats)
+
+    print("\n✅ База данных готова к работе!")
+    print("=" * 60)
+    # ====================================================
+
     db = DBManager()
     db.connect()
 
-    print("=" * 60)
-    print("ДОБРО ПОЖАЛОВАТЬ В HH VACANCY PARSER")
+    print("\nДОБРО ПОЖАЛОВАТЬ В HH VACANCY PARSER")
     print("=" * 60)
     print(f"\n📊 В базе данных: {db.get_statistics()['vacancies_count']} вакансий")
 
